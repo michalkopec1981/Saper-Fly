@@ -1567,6 +1567,23 @@ def get_password_state():
         'mode': mode
     })
 
+# Dodaj zaraz po @app.route('/')
+@app.route('/health')
+def health_check():
+    """Health check endpoint dla Fly.io"""
+    try:
+        # Sprawdź połączenie z bazą
+        db.session.execute('SELECT 1')
+        db_status = 'connected'
+    except:
+        db_status = 'disconnected'
+    
+    return jsonify({
+        'status': 'healthy',
+        'service': 'SAPER QR',
+        'database': db_status
+    }), 200
+
 
 # ===================================================================
 # --- Gniazda (SocketIO) ---
@@ -1746,6 +1763,7 @@ if __name__ == '__main__':
     print("=" * 60)
     
     socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode, allow_unsafe_werkzeug=True)
+
 
 
 
