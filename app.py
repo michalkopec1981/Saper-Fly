@@ -1617,6 +1617,44 @@ def health_check():
         'database': db_status
     }), 200
 
+@app.route('/debug/template-info')
+def debug_template_info():
+    """Debug endpoint - sprawdź zawartość szablonów i plików statycznych"""
+    try:
+        import hashlib
+
+        # Sprawdź host.html
+        host_html_path = os.path.join(app.root_path, 'templates', 'host.html')
+        with open(host_html_path, 'r', encoding='utf-8') as f:
+            host_content = f.read()
+            host_hash = hashlib.md5(host_content.encode()).hexdigest()
+            host_lines = len(host_content.split('\n'))
+            has_snake = 'Snake' in host_content and 'snake-toggle' in host_content
+            snake_count = host_content.count('Snake')
+
+        # Sprawdź snake.js
+        snake_js_path = os.path.join(app.root_path, 'static', 'snake.js')
+        snake_js_exists = os.path.exists(snake_js_path)
+        snake_js_size = os.path.getsize(snake_js_path) if snake_js_exists else 0
+
+        return jsonify({
+            'host_html': {
+                'lines': host_lines,
+                'md5': host_hash,
+                'has_snake_section': has_snake,
+                'snake_mentions': snake_count
+            },
+            'snake_js': {
+                'exists': snake_js_exists,
+                'size_bytes': snake_js_size
+            },
+            'git_info': {
+                'commit': os.popen('git rev-parse HEAD').read().strip()[:8]
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/init', methods=['GET', 'POST'])
 def init_admin():
     """Inicjalizacja/reset hasła administratora - dostęp przez token z env"""
