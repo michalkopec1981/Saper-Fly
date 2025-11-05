@@ -603,8 +603,12 @@ def get_host_game_state():
 @host_required
 def start_game():
     event_id = session['host_event_id']
-    print(f"=== START GAME DEBUG ===")
+    print(f"\n{'='*60}")
+    print(f"🎮 START GAME REQUEST RECEIVED")
+    print(f"{'='*60}")
     print(f"Event ID: {event_id}")
+    print(f"Session: {dict(session)}")
+    print(f"Request JSON: {request.json}")
     
     try:
         # ✅ KROK 1: Najpierw resetujemy kody QR (usuwamy referencje do graczy)
@@ -1671,21 +1675,27 @@ _background_task_lock = False
 def update_timers():
     """Background task that sends timer updates every second"""
     print("🚀 Timer background task started")
-    
+
     last_tick_times = {}  # Śledzi ostatni czas tick'a dla każdego eventu
-    
+    tick_count = 0  # Licznik tick'ów dla debugowania
+
     while True:
         try:
             with app.app_context():
                 # Znajdź wszystkie aktywne eventy
                 active_events = db.session.query(GameState.event_id).filter_by(
-                    key='game_active', 
+                    key='game_active',
                     value='True'
                 ).distinct().all()
                 event_ids = [e[0] for e in active_events]
-                
+
+                # Debug co 10 sekund
+                tick_count += 1
+                if tick_count % 10 == 0:
+                    print(f"🔍 Timer tick #{tick_count}: Found {len(event_ids)} active events: {event_ids}")
+
                 current_time = datetime.utcnow()
-                
+
                 for event_id in event_ids:
                     is_running = get_game_state(event_id, 'is_timer_running', 'False')
                     
