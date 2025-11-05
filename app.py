@@ -1577,12 +1577,66 @@ def health_check():
         db_status = 'connected'
     except:
         db_status = 'disconnected'
-    
+
     return jsonify({
         'status': 'healthy',
         'service': 'SAPER QR',
         'database': db_status
     }), 200
+
+@app.route('/admin/init', methods=['GET', 'POST'])
+def init_admin():
+    """Inicjalizacja/reset hasła administratora - dostęp przez token z env"""
+    try:
+        # Sprawdź token z env dla bezpieczeństwa
+        init_token = os.environ.get('ADMIN_INIT_TOKEN', 'init-saper-admin-2024')
+
+        if request.method == 'GET':
+            # Sprawdź tylko status
+            admin = Admin.query.first()
+            admin_exists = admin is not None
+            admin_count = Admin.query.count()
+
+            return jsonify({
+                'admin_exists': admin_exists,
+                'admin_count': admin_count,
+                'login': admin.login if admin else None,
+                'message': 'POST z tokenem aby zresetować admina'
+            }), 200
+
+        # POST - inicjalizacja/reset
+        provided_token = request.json.get('token') if request.is_json else request.form.get('token')
+
+        if provided_token != init_token:
+            return jsonify({'error': 'Nieprawidłowy token'}), 403
+
+        # Znajdź lub utwórz admina
+        admin = Admin.query.filter_by(login='admin').first()
+
+        if admin:
+            # Reset hasła istniejącego admina
+            admin.set_password('admin')
+            db.session.commit()
+            return jsonify({
+                'message': 'Hasło admina zostało zresetowane na: admin',
+                'login': 'admin',
+                'password': 'admin'
+            }), 200
+        else:
+            # Utwórz nowego admina
+            new_admin = Admin(login='admin')
+            new_admin.set_password('admin')
+            db.session.add(new_admin)
+            db.session.commit()
+            return jsonify({
+                'message': 'Utworzono nowego admina',
+                'login': 'admin',
+                'password': 'admin'
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Błąd: {str(e)}'}), 500
 
 
 # ===================================================================
