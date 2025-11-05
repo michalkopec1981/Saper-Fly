@@ -30,5 +30,5 @@ RUN mkdir -p static/uploads/logos static/uploads/funny
 # Expose port (Fly.io używa 8080 wewnętrznie)
 EXPOSE 8080
 
-# Uruchom aplikację z gunicorn + gevent
-CMD ["gunicorn", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "--workers", "1", "--bind", "0.0.0.0:8080", "--timeout", "120", "--log-level", "info", "app:app"]
+# Uruchom aplikację z gunicorn + gevent + custom config
+CMD ["gunicorn", "-c", "gunicorn_config.py", "app:app"]

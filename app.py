@@ -1761,15 +1761,22 @@ def update_timers():
 def init_background_tasks():
     """Initialize background tasks - called once per worker"""
     global _background_task_started, _background_task_lock
-    
-    if _background_task_started or _background_task_lock:
+
+    # Sprawdź czy task już działa
+    if _background_task_started:
+        print("⚠️  Background task already started, skipping...")
         return
-    
+
+    # Spróbuj zdobyć lock
+    if _background_task_lock:
+        print("⚠️  Another thread is initializing background tasks, skipping...")
+        return
+
     _background_task_lock = True
     print("=" * 60)
     print("🚀 INITIALIZING BACKGROUND TASKS")
     print("=" * 60)
-    
+
     try:
         print("📡 Starting timer background task...")
         socketio.start_background_task(target=update_timers)
@@ -1779,6 +1786,8 @@ def init_background_tasks():
         print(f"❌ Error starting background task: {e}")
         import traceback
         traceback.print_exc()
+        # Jeśli się nie udało, resetuj flagę żeby można było spróbować ponownie
+        _background_task_started = False
     finally:
         _background_task_lock = False
 
