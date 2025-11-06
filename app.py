@@ -1807,6 +1807,161 @@ def complete_minigame():
             'message': f'Postęp w {game_name}: {new_score}/20 pkt. Zeskanuj kod ponownie, aby kontynuować!'
         })
 
+# --- API: PLAYER - AI QUIZ ---
+@app.route('/api/player/ai-quiz/categories/<int:event_id>', methods=['GET'])
+def get_player_ai_categories(event_id):
+    """Zwraca aktywne kategorie AI Quiz dla gracza"""
+    # Pobierz aktywne domyślne kategorie
+    default_categories = AIQuizCategory.query.filter_by(
+        is_default=True,
+        is_active=True,
+        event_id=None
+    ).all()
+
+    # Pobierz aktywne custom kategorie dla tego eventu
+    custom_categories = AIQuizCategory.query.filter_by(
+        is_custom=True,
+        is_active=True,
+        event_id=event_id
+    ).all()
+
+    all_categories = default_categories + custom_categories
+
+    return jsonify([{
+        'id': cat.id,
+        'name': cat.name,
+        'difficulty': cat.difficulty,
+        'is_custom': cat.is_custom
+    } for cat in all_categories])
+
+@app.route('/api/player/ai-quiz/question', methods=['POST'])
+def get_ai_quiz_question():
+    """Zwraca losowe pytanie z wybranej kategorii (niepytane wcześniej przez gracza)"""
+    data = request.json
+    player_id = data.get('player_id')
+    category_id = data.get('category_id')
+    event_id = data.get('event_id')
+
+    player = db.session.get(Player, player_id)
+    if not player or player.event_id != event_id:
+        return jsonify({'error': 'Nieprawidłowy gracz'}), 400
+
+    category = db.session.get(AIQuizCategory, category_id)
+    if not category or not category.is_active:
+        return jsonify({'error': 'Kategoria nieaktywna lub nie istnieje'}), 400
+
+    # Sprawdź czy kategoria należy do tego eventu (jeśli custom)
+    if category.is_custom and category.event_id != event_id:
+        return jsonify({'error': 'Kategoria nie należy do tego eventu'}), 403
+
+    # Pobierz pytania już odpowiedziane przez gracza
+    answered_question_ids = db.session.query(AIPlayerAnswer.ai_question_id).filter_by(
+        player_id=player_id,
+        event_id=event_id
+    ).all()
+    answered_ids = [q[0] for q in answered_question_ids]
+
+    # Pobierz pytania z kategorii, które gracz jeszcze nie widział
+    available_questions = AIQuestion.query.filter(
+        AIQuestion.category_id == category_id,
+        ~AIQuestion.id.in_(answered_ids) if answered_ids else True
+    ).all()
+
+    if not available_questions:
+        return jsonify({
+            'error': 'Odpowiedziałeś już na wszystkie pytania z tej kategorii!',
+            'all_answered': True
+        }), 404
+
+    # Wybierz losowe pytanie
+    import random
+    question = random.choice(available_questions)
+
+    # Zwiększ licznik wyświetleń
+    question.times_shown += 1
+    db.session.commit()
+
+    # Zwróć pytanie bez informacji o poprawnej odpowiedzi
+    return jsonify({
+        'question_id': question.id,
+        'question_text': question.question_text,
+        'option_a': question.option_a,
+        'option_b': question.option_b,
+        'option_c': question.option_c,
+        'category_name': category.name,
+        'difficulty': question.difficulty
+    })
+
+@app.route('/api/player/ai-quiz/answer', methods=['POST'])
+def submit_ai_quiz_answer():
+    """Sprawdza odpowiedź gracza i przyznaje punkty"""
+    data = request.json
+    player_id = data.get('player_id')
+    question_id = data.get('question_id')
+    answer = data.get('answer')  # 'A', 'B', lub 'C'
+    event_id = data.get('event_id')
+
+    player = db.session.get(Player, player_id)
+    if not player or player.event_id != event_id:
+        return jsonify({'error': 'Nieprawidłowy gracz'}), 400
+
+    question = db.session.get(AIQuestion, question_id)
+    if not question:
+        return jsonify({'error': 'Pytanie nie istnieje'}), 404
+
+    # Sprawdź czy gracz już odpowiedział na to pytanie
+    existing_answer = AIPlayerAnswer.query.filter_by(
+        player_id=player_id,
+        ai_question_id=question_id,
+        event_id=event_id
+    ).first()
+
+    if existing_answer:
+        return jsonify({'error': 'Już odpowiedziałeś na to pytanie'}), 409
+
+    # Zapisz odpowiedź gracza
+    player_answer = AIPlayerAnswer(
+        player_id=player_id,
+        ai_question_id=question_id,
+        event_id=event_id
+    )
+    db.session.add(player_answer)
+
+    # Sprawdź poprawność odpowiedzi
+    is_correct = (answer.upper() == question.correct_answer.upper())
+
+    if is_correct:
+        # Zwiększ licznik poprawnych odpowiedzi
+        question.times_correct += 1
+
+        # Przyznaj 5 punktów za poprawną odpowiedź
+        bonus = int(get_game_state(event_id, 'bonus_multiplier', 1))
+        points = 5 * bonus
+        player.score += points
+
+        db.session.commit()
+
+        # Emituj aktualizację tablicy
+        emit_leaderboard_update(f'event_{event_id}')
+
+        return jsonify({
+            'correct': True,
+            'points_earned': points,
+            'total_score': player.score,
+            'correct_answer': question.correct_answer,
+            'message': f'Brawo! Poprawna odpowiedź! +{points} pkt'
+        })
+    else:
+        db.session.commit()
+
+        return jsonify({
+            'correct': False,
+            'points_earned': 0,
+            'total_score': player.score,
+            'correct_answer': question.correct_answer,
+            'message': f'Niestety, zła odpowiedź. Poprawna to: {question.correct_answer}'
+        })
+
 # --- API: PASSWORD MANAGEMENT ---
 @app.route('/api/host/password/set', methods=['POST'])
 @host_required
