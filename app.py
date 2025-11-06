@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from gevent import monkey
 monkey.patch_all()
 
@@ -849,6 +850,14 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
         Lista pytań w formacie [{'q': '...', 'a': '...', 'b': '...', 'c': '...', 'correct': 'A/B/C'}]
     """
     import json
+    import sys
+    import io
+
+    # Upewnij się że stdout/stderr używają UTF-8
+    if sys.stdout.encoding != 'utf-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    if sys.stderr.encoding != 'utf-8':
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
@@ -937,9 +946,16 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
         return questions
 
     except anthropic.APIError as e:
-        raise Exception(f'Błąd API Claude: {str(e)}')
+        error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        raise Exception(f'Błąd API Claude: {error_msg}')
     except json.JSONDecodeError as e:
-        raise Exception(f'Błąd parsowania odpowiedzi API: {str(e)}')
+        error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        raise Exception(f'Błąd parsowania odpowiedzi API: {error_msg}')
+    except UnicodeEncodeError as e:
+        raise Exception(f'Błąd kodowania znaków: {e.reason}')
+    except Exception as e:
+        error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        raise Exception(f'Błąd: {error_msg}')
 
 @app.route('/api/host/ai-quiz/category', methods=['POST'])
 @host_required
