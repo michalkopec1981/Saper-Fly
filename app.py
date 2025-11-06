@@ -2407,11 +2407,13 @@ def update_timers():
         try:
             with app.app_context():
                 # Znajdź wszystkie aktywne eventy
-                active_events = db.session.query(GameState.event_id).filter_by(
+                # Query całych obiektów GameState zamiast tylko kolumny event_id
+                # to działa zarówno ze starą jak i nową strukturą bazy
+                active_events = db.session.query(GameState).filter_by(
                     key='game_active',
                     value='True'
-                ).distinct().all()
-                event_ids = [e[0] for e in active_events]
+                ).all()
+                event_ids = list(set([e.event_id for e in active_events]))
 
                 # Debug co 10 sekund
                 tick_count += 1
