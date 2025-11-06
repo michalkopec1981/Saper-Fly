@@ -22,8 +22,62 @@
              <div id="answers" class="d-grid gap-2 mt-3"></div>
         </div>
         <div id="message-section" style="display: none;" class="alert"></div>
+
+        <!-- 🎯 WYBÓR TYPU PYTAŃ (HOST vs AI) -->
+        <div id="question-type-choice" style="display: none;" class="text-center">
+            <h3 class="mb-4">🎯 Wybierz typ pytań:</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card h-100 border-primary">
+                        <div class="card-body">
+                            <h4 class="card-title">🎓 Pytania Hosta</h4>
+                            <p class="card-text">
+                                <span class="badge bg-success fs-5">20 punktów</span>
+                            </p>
+                            <p class="text-muted">Pytania przygotowane przez organizatora gry</p>
+                            <button id="choose-host-questions-btn" class="btn btn-primary btn-lg w-100">
+                                Wybierz →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-info">
+                        <div class="card-body">
+                            <h4 class="card-title">🤖 Pytania AI</h4>
+                            <p class="card-text">
+                                <span class="badge bg-info fs-5">5 punktów</span>
+                            </p>
+                            <p class="text-muted">Wybierz kategorię i odpowiedz na pytanie AI</p>
+                            <button id="choose-ai-questions-btn" class="btn btn-info btn-lg w-100">
+                                Wybierz →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🤖 WYBÓR KATEGORII AI -->
+        <div id="ai-category-choice" style="display: none;" class="text-center">
+            <h3 class="mb-4">🤖 Wybierz kategorię:</h3>
+            <div id="ai-categories-list" class="row g-3">
+                <!-- Kategorie będą załadowane przez JS -->
+            </div>
+            <button id="back-to-type-choice-btn" class="btn btn-secondary mt-3">
+                ← Wróć do wyboru typu pytań
+            </button>
+        </div>
+
+        <!-- 🤖 PYTANIE AI QUIZ -->
+        <div id="ai-quiz-section" style="display: none;" class="text-center">
+            <h4 id="ai-category-name" class="mb-2"></h4>
+            <h3 class="mb-4">Pytanie:</h3>
+            <p id="ai-question" class="lead"></p>
+            <div id="ai-answers" class="d-grid gap-2 mt-3"></div>
+        </div>
     </div>
-    
+
     <!-- 📸 WIDOK APARATU DO ZDJĘĆ -->
     <div id="photo-capture-view" style="display:none;" class="text-center">
         <h3>📸 Wyzwanie Fotograficzne!</h3>
@@ -223,6 +277,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const questionEl = document.getElementById('question');
     const answersEl = document.getElementById('answers');
 
+    // AI Quiz elements
+    const questionTypeChoice = document.getElementById('question-type-choice');
+    const aiCategoryChoice = document.getElementById('ai-category-choice');
+    const aiQuizSection = document.getElementById('ai-quiz-section');
+    const aiCategoriesList = document.getElementById('ai-categories-list');
+    const aiQuestionEl = document.getElementById('ai-question');
+    const aiAnswersEl = document.getElementById('ai-answers');
+    const aiCategoryNameEl = document.getElementById('ai-category-name');
+    const chooseHostQuestionsBtn = document.getElementById('choose-host-questions-btn');
+    const chooseAIQuestionsBtn = document.getElementById('choose-ai-questions-btn');
+    const backToTypeChoiceBtn = document.getElementById('back-to-type-choice-btn');
+
+    let currentAIQuestionId = null;
+    let currentAICategoryId = null;
+    let hostQuestionData = null;  // Store host question data for later
+
     // Photo capture elements
     const cameraFeed = document.getElementById('camera-feed');
     const captureBtn = document.getElementById('capture-btn');
@@ -344,7 +414,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (data.status === 'question') {
-                displayQuestion(data.question);
+                // Store host question data and show choice
+                hostQuestionData = data.question;
+                showQuestionTypeChoice();
             } else if (data.status === 'photo_challenge') {
                 startPhotoChallenge();
             } else if (data.status === 'minigame') {
@@ -735,6 +807,183 @@ document.addEventListener('DOMContentLoaded', function() {
             location.reload();
         }
     });
+
+    // ==================== AI QUIZ FUNCTIONS ====================
+    function showQuestionTypeChoice() {
+        // Hide all other sections
+        quizSection.style.display = 'none';
+        messageSection.style.display = 'none';
+        aiCategoryChoice.style.display = 'none';
+        aiQuizSection.style.display = 'none';
+        // Show question type choice
+        questionTypeChoice.style.display = 'block';
+    }
+
+    chooseHostQuestionsBtn.addEventListener('click', () => {
+        // Display the host question
+        if (hostQuestionData) {
+            questionTypeChoice.style.display = 'none';
+            displayQuestion(hostQuestionData);
+        }
+    });
+
+    chooseAIQuestionsBtn.addEventListener('click', async () => {
+        questionTypeChoice.style.display = 'none';
+        await loadAICategories();
+    });
+
+    backToTypeChoiceBtn.addEventListener('click', () => {
+        aiCategoryChoice.style.display = 'none';
+        questionTypeChoice.style.display = 'block';
+    });
+
+    async function loadAICategories() {
+        aiCategoriesList.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+        aiCategoryChoice.style.display = 'block';
+
+        try {
+            const response = await fetch(`/api/player/ai-quiz/categories/${eventId}`);
+            if (!response.ok) throw new Error('Błąd ładowania kategorii');
+
+            const categories = await response.json();
+
+            if (categories.length === 0) {
+                aiCategoriesList.innerHTML = '<p class="text-muted">Brak aktywnych kategorii AI</p>';
+                return;
+            }
+
+            aiCategoriesList.innerHTML = categories.map(cat => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-info category-card" style="cursor: pointer;" data-category-id="${cat.id}">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">${cat.name}</h5>
+                            <p class="mb-0">
+                                <span class="badge bg-${cat.difficulty === 'easy' ? 'success' : cat.difficulty === 'medium' ? 'warning' : 'danger'}">
+                                    ${cat.difficulty === 'easy' ? '🟢 Łatwy' : cat.difficulty === 'medium' ? '🟡 Średni' : '🔴 Zaawansowany'}
+                                </span>
+                            </p>
+                            ${cat.is_custom ? '<small class="text-muted mt-1 d-block">✨ Kategoria custom</small>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const categoryId = card.dataset.categoryId;
+                    loadAIQuestion(categoryId);
+                });
+            });
+        } catch (error) {
+            console.error('Error loading AI categories:', error);
+            aiCategoriesList.innerHTML = '<div class="alert alert-danger">Błąd ładowania kategorii</div>';
+        }
+    }
+
+    async function loadAIQuestion(categoryId) {
+        currentAICategoryId = categoryId;
+        aiCategoryChoice.style.display = 'none';
+        aiQuizSection.style.display = 'block';
+        aiQuestionEl.textContent = 'Ładowanie pytania...';
+        aiAnswersEl.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+
+        try {
+            const response = await fetch('/api/player/ai-quiz/question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player_id: parseInt(playerId),
+                    category_id: parseInt(categoryId),
+                    event_id: parseInt(eventId)
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                if (error.all_answered) {
+                    showMessage('Odpowiedziałeś już na wszystkie pytania z tej kategorii! Wybierz inną kategorię.', 'info');
+                    setTimeout(() => loadAICategories(), 2000);
+                } else {
+                    showMessage(error.error || 'Błąd ładowania pytania', 'danger');
+                }
+                return;
+            }
+
+            const data = await response.json();
+            currentAIQuestionId = data.question_id;
+
+            aiCategoryNameEl.textContent = `📁 ${data.category_name}`;
+            aiQuestionEl.textContent = data.question_text;
+            aiAnswersEl.innerHTML = `
+                <button class="btn btn-outline-primary btn-lg ai-answer-btn" data-answer="A">
+                    <strong>A:</strong> ${data.option_a}
+                </button>
+                <button class="btn btn-outline-primary btn-lg ai-answer-btn" data-answer="B">
+                    <strong>B:</strong> ${data.option_b}
+                </button>
+                <button class="btn btn-outline-primary btn-lg ai-answer-btn" data-answer="C">
+                    <strong>C:</strong> ${data.option_c}
+                </button>
+            `;
+
+            // Add click handlers for answers
+            document.querySelectorAll('.ai-answer-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const answer = btn.dataset.answer;
+                    submitAIAnswer(answer);
+                });
+            });
+        } catch (error) {
+            console.error('Error loading AI question:', error);
+            showMessage('Błąd połączenia z serwerem: ' + error.message, 'danger');
+        }
+    }
+
+    async function submitAIAnswer(answer) {
+        // Disable all buttons
+        document.querySelectorAll('.ai-answer-btn').forEach(btn => btn.disabled = true);
+
+        try {
+            const response = await fetch('/api/player/ai-quiz/answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player_id: parseInt(playerId),
+                    question_id: currentAIQuestionId,
+                    answer: answer,
+                    event_id: parseInt(eventId)
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showMessage(data.error || 'Błąd wysyłania odpowiedzi', 'danger');
+                return;
+            }
+
+            // Update score
+            playerScoreDisplay.textContent = data.total_score;
+
+            // Hide quiz section and show message
+            aiQuizSection.style.display = 'none';
+
+            if (data.correct) {
+                showMessage(data.message, 'success');
+            } else {
+                showMessage(data.message, 'warning');
+            }
+
+            // Return to category choice after 3 seconds
+            setTimeout(() => {
+                loadAICategories();
+            }, 3000);
+        } catch (error) {
+            console.error('Error submitting AI answer:', error);
+            showMessage('Błąd połączenia z serwerem: ' + error.message, 'danger');
+        }
+    }
 
     // Initialize
     if (playerId && playerName) {
