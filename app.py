@@ -848,6 +848,8 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
     Returns:
         Lista pytań w formacie [{'q': '...', 'a': '...', 'b': '...', 'c': '...', 'correct': 'A/B/C'}]
     """
+    import json
+
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
         raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych środowiskowych')
@@ -920,7 +922,6 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
         response_text = response_text.strip()
 
         # Parse JSON
-        import json
         questions = json.loads(response_text)
 
         # Walidacja
