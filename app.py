@@ -748,6 +748,175 @@ def get_host_qrcodes():
         'claimed_by_player_id': qr.claimed_by_player_id
     } for qr in qrcodes])
 
+# --- API: HOST - AI QUIZ ---
+@app.route('/api/host/ai-quiz/categories', methods=['GET'])
+@host_required
+def get_host_ai_categories():
+    """Zwraca wszystkie kategorie AI (10 domyślnych + custom dla tego eventu)"""
+    event_id = session['host_event_id']
+
+    # Pobierz 10 domyślnych kategorii
+    default_categories = AIQuizCategory.query.filter_by(
+        is_default=True,
+        event_id=None
+    ).all()
+
+    # Pobierz custom kategorie dla tego eventu
+    custom_categories = AIQuizCategory.query.filter_by(
+        is_custom=True,
+        event_id=event_id
+    ).all()
+
+    def category_to_dict(cat):
+        question_count = AIQuestion.query.filter_by(category_id=cat.id).count()
+        return {
+            'id': cat.id,
+            'name': cat.name,
+            'difficulty': cat.difficulty,
+            'is_active': cat.is_active,
+            'is_default': cat.is_default,
+            'is_custom': cat.is_custom,
+            'created_by_api': cat.created_by_api,
+            'question_count': question_count
+        }
+
+    return jsonify({
+        'default_categories': [category_to_dict(c) for c in default_categories],
+        'custom_categories': [category_to_dict(c) for c in custom_categories]
+    })
+
+@app.route('/api/host/ai-quiz/category/<int:category_id>/toggle', methods=['POST'])
+@host_required
+def toggle_ai_category(category_id):
+    """Przełącza aktywność kategorii (on/off)"""
+    event_id = session['host_event_id']
+
+    category = db.session.get(AIQuizCategory, category_id)
+    if not category:
+        return jsonify({'error': 'Kategoria nie istnieje'}), 404
+
+    # Sprawdź czy host ma prawo modyfikować tę kategorię
+    # (domyślne może każdy, custom tylko właściciel eventu)
+    if category.is_custom and category.event_id != event_id:
+        return jsonify({'error': 'Brak uprawnień do tej kategorii'}), 403
+
+    category.is_active = not category.is_active
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Status kategorii zmieniony',
+        'is_active': category.is_active
+    })
+
+@app.route('/api/host/ai-quiz/category/<int:category_id>/difficulty', methods=['PUT'])
+@host_required
+def update_category_difficulty(category_id):
+    """Zmienia poziom trudności kategorii"""
+    event_id = session['host_event_id']
+    data = request.json
+    new_difficulty = data.get('difficulty')
+
+    if new_difficulty not in ['easy', 'medium', 'advanced']:
+        return jsonify({'error': 'Nieprawidłowy poziom trudności'}), 400
+
+    category = db.session.get(AIQuizCategory, category_id)
+    if not category:
+        return jsonify({'error': 'Kategoria nie istnieje'}), 404
+
+    # Sprawdź uprawnienia
+    if category.is_custom and category.event_id != event_id:
+        return jsonify({'error': 'Brak uprawnień do tej kategorii'}), 403
+
+    category.difficulty = new_difficulty
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Poziom trudności zmieniony',
+        'difficulty': new_difficulty
+    })
+
+@app.route('/api/host/ai-quiz/category', methods=['POST'])
+@host_required
+def add_custom_category():
+    """Dodaje custom kategorię dla eventu - z opcją generowania pytań przez Claude API"""
+    event_id = session['host_event_id']
+    data = request.json
+    category_name = data.get('name', '').strip()
+    difficulty = data.get('difficulty', 'medium')
+    use_claude_api = data.get('use_claude_api', False)
+
+    if not category_name:
+        return jsonify({'error': 'Nazwa kategorii jest wymagana'}), 400
+
+    if difficulty not in ['easy', 'medium', 'advanced']:
+        return jsonify({'error': 'Nieprawidłowy poziom trudności'}), 400
+
+    # Sprawdź czy kategoria już istnieje dla tego eventu
+    existing = AIQuizCategory.query.filter_by(
+        name=category_name,
+        event_id=event_id,
+        is_custom=True
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Kategoria o tej nazwie już istnieje'}), 409
+
+    # Utwórz nową kategorię
+    new_category = AIQuizCategory(
+        name=category_name,
+        difficulty=difficulty,
+        is_active=True,
+        is_default=False,
+        is_custom=True,
+        event_id=event_id,
+        created_by_api=use_claude_api
+    )
+    db.session.add(new_category)
+    db.session.flush()  # Żeby dostać ID kategorii
+
+    # Jeśli użytkownik wybrał generowanie przez Claude API
+    if use_claude_api:
+        try:
+            # TODO: Implementacja Claude API - generowanie pytań
+            # Na razie zwróć sukces z informacją o braku pytań
+            db.session.commit()
+            return jsonify({
+                'message': f'Kategoria "{category_name}" utworzona. Generowanie pytań przez Claude API - w przygotowaniu.',
+                'category_id': new_category.id,
+                'questions_generated': 0,
+                'note': 'Funkcja generowania pytań przez Claude API będzie dostępna wkrótce'
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'Błąd podczas generowania pytań: {str(e)}'}), 500
+    else:
+        # Kategoria bez pytań (Admin może je później dodać)
+        db.session.commit()
+        return jsonify({
+            'message': f'Kategoria "{category_name}" utworzona. Pytania można dodać w panelu Admin.',
+            'category_id': new_category.id
+        })
+
+@app.route('/api/host/ai-quiz/category/<int:category_id>', methods=['DELETE'])
+@host_required
+def delete_custom_category(category_id):
+    """Usuwa custom kategorię (tylko własne kategorie eventu)"""
+    event_id = session['host_event_id']
+
+    category = db.session.get(AIQuizCategory, category_id)
+    if not category:
+        return jsonify({'error': 'Kategoria nie istnieje'}), 404
+
+    # Można usuwać tylko custom kategorie należące do tego eventu
+    if not category.is_custom or category.event_id != event_id:
+        return jsonify({'error': 'Brak uprawnień do usunięcia tej kategorii'}), 403
+
+    category_name = category.name
+    db.session.delete(category)
+    db.session.commit()
+
+    return jsonify({'message': f'Kategoria "{category_name}" została usunięta'})
+
 # --- API: HOST ---
 @app.route('/api/host/state', methods=['GET'])
 @host_required
