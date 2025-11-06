@@ -874,9 +874,19 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
     if hasattr(sys.stderr, 'buffer'):
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+
+    # Sprawdź czy klucz API jest ustawiony i wygląda poprawnie
     if not api_key:
-        raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych środowiskowych')
+        raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych srodowiskowych')
+
+    # Sprawdź czy to nie jest placeholder
+    if 'twoj' in api_key.lower() or 'placeholder' in api_key.lower() or api_key == 'your-key-here':
+        raise Exception('ANTHROPIC_API_KEY zawiera placeholder - uzyj prawdziwego klucza API z console.anthropic.com')
+
+    # Klucz API Anthropic powinien zaczynać się od 'sk-ant-'
+    if not api_key.startswith('sk-ant-'):
+        raise Exception('ANTHROPIC_API_KEY ma nieprawidlowy format (powinien zaczynac sie od sk-ant-)')
 
     # Zapisz i usuń zmienne proxy, które mogą powodować problemy z anthropic
     old_http_proxy = os.environ.pop('HTTP_PROXY', None)
@@ -1058,7 +1068,12 @@ def add_custom_category():
             })
         except Exception as e:
             db.session.rollback()
-            return jsonify({'error': f'Błąd podczas generowania pytań: {str(e)}'}), 500
+            # Bezpieczna konwersja błędu - unikaj problemów z kodowaniem
+            try:
+                error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            except:
+                error_msg = repr(e)
+            return jsonify({'error': f'Blad podczas generowania pytan: {error_msg}'}), 500
     else:
         # Kategoria bez pytań (Admin może je później dodać)
         db.session.commit()
