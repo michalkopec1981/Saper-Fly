@@ -121,55 +121,107 @@ AI_QUESTIONS_SEED = {
         {"q": "W którym kraju znajduje się najgłębsze jezioro?", "a": "Rosja", "b": "Kanada", "c": "USA", "correct": "A", "difficulty": "advanced"},
     ],
 
-    # Pozostałe 8 kategorii będą miały podobną strukturę
-    # Dla oszczędności miejsca, pokażę tylko format:
-
     "Znane postaci": [
-        # 50 pytań o znane postacie (17 easy, 17 medium, 16 advanced)
         {"q": "Kto namalował Mona Lisę?", "a": "Michał Anioł", "b": "Leonardo da Vinci", "c": "Rafael", "correct": "B", "difficulty": "easy"},
         {"q": "Kto napisał 'Romeo i Julia'?", "a": "William Shakespeare", "b": "Charles Dickens", "c": "Jane Austen", "correct": "A", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Kto był pierwszym człowiekiem w kosmosie?", "a": "Neil Armstrong", "b": "Jurij Gagarin", "c": "Buzz Aldrin", "correct": "B", "difficulty": "easy"},
+        {"q": "Kto wynalazł żarówkę?", "a": "Nikola Tesla", "b": "Thomas Edison", "c": "Benjamin Franklin", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto skomponował 'Dla Elizy'?", "a": "Mozart", "b": "Beethoven", "c": "Chopin", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto był pierwszym prezydentem Polski?", "a": "Ignacy Paderewski", "b": "Gabriel Narutowicz", "c": "Stanisław Wojciechowski", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto odkrył penicylinę?", "a": "Louis Pasteur", "b": "Alexander Fleming", "c": "Marie Curie", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto namalował 'Gwiaździstą noc'?", "a": "Vincent van Gogh", "b": "Pablo Picasso", "c": "Claude Monet", "correct": "A", "difficulty": "advanced"},
+        {"q": "Kto był autorem teorii względności?", "a": "Isaac Newton", "b": "Albert Einstein", "c": "Stephen Hawking", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto otrzymał Nobla w dziedzinie chemii i fizyki?", "a": "Marie Curie", "b": "Linus Pauling", "c": "Albert Einstein", "correct": "A", "difficulty": "advanced"},
     ],
 
     "Muzyka": [
         {"q": "Kto był liderem zespołu The Beatles?", "a": "Paul McCartney", "b": "John Lennon", "c": "George Harrison", "correct": "B", "difficulty": "easy"},
         {"q": "Który kompozytor skomponował 'Cztery pory roku'?", "a": "Bach", "b": "Mozart", "c": "Vivaldi", "correct": "C", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Ile strun ma standardowa gitara?", "a": "5", "b": "6", "c": "7", "correct": "B", "difficulty": "easy"},
+        {"q": "Kto skomponował 'Mazurek Dąbrowskiego'?", "a": "Fryderyk Chopin", "b": "Józef Wybicki", "c": "Michał Kleofas Ogiński", "correct": "B", "difficulty": "medium"},
+        {"q": "Który zespół wykonał 'Bohemian Rhapsody'?", "a": "Queen", "b": "Led Zeppelin", "c": "Pink Floyd", "correct": "A", "difficulty": "medium"},
+        {"q": "Ile klawiszy ma standardowe pianino?", "a": "76", "b": "88", "c": "96", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto skomponował operę 'Don Giovanni'?", "a": "Verdi", "b": "Mozart", "c": "Wagner", "correct": "B", "difficulty": "advanced"},
+        {"q": "Który kompozytor był głuchy?", "a": "Bach", "b": "Beethoven", "c": "Handel", "correct": "B", "difficulty": "advanced"},
+        {"q": "Ile symfonii skomponował Beethoven?", "a": "9", "b": "10", "c": "12", "correct": "A", "difficulty": "advanced"},
+        {"q": "Kto napisał 'Marsz weselny'?", "a": "Wagner", "b": "Mendelssohn", "c": "Strauss", "correct": "B", "difficulty": "advanced"},
     ],
 
     "Literatura": [
         {"q": "Kto napisał 'Pan Tadeusz'?", "a": "Juliusz Słowacki", "b": "Adam Mickiewicz", "c": "Henryk Sienkiewicz", "correct": "B", "difficulty": "easy"},
         {"q": "Który pisarz stworzył Sherlocka Holmesa?", "a": "Agatha Christie", "b": "Arthur Conan Doyle", "c": "Edgar Allan Poe", "correct": "B", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Kto napisał 'Władcę Pierścieni'?", "a": "C.S. Lewis", "b": "J.R.R. Tolkien", "c": "George R.R. Martin", "correct": "B", "difficulty": "easy"},
+        {"q": "Kto napisał 'Quo Vadis'?", "a": "Bolesław Prus", "b": "Henryk Sienkiewicz", "c": "Stefan Żeromski", "correct": "B", "difficulty": "medium"},
+        {"q": "Który poeta napisał 'Nie pytaj mnie, jak było tam'?", "a": "Wisława Szymborska", "b": "Czesław Miłosz", "c": "Zbigniew Herbert", "correct": "C", "difficulty": "medium"},
+        {"q": "Kto napisał '1984'?", "a": "Aldous Huxley", "b": "George Orwell", "c": "Ray Bradbury", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto napisał 'Ferdydurke'?", "a": "Witold Gombrowicz", "b": "Bruno Schulz", "c": "Stanisław Lem", "correct": "A", "difficulty": "advanced"},
+        {"q": "Który polski poeta otrzymał Nobla w 1980?", "a": "Wisława Szymborska", "b": "Czesław Miłosz", "c": "Zbigniew Herbert", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto napisał 'Lalka'?", "a": "Henryk Sienkiewicz", "b": "Bolesław Prus", "c": "Eliza Orzeszkowa", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto jest autorem 'Wesela'?", "a": "Stanisław Wyspiański", "b": "Juliusz Słowacki", "c": "Cyprian Norwid", "correct": "A", "difficulty": "advanced"},
     ],
 
     "Kuchnia": [
         {"q": "Z jakiego kraju pochodzi sushi?", "a": "Chiny", "b": "Japonia", "c": "Korea", "correct": "B", "difficulty": "easy"},
         {"q": "Który składnik jest głównym w guacamole?", "a": "Pomidor", "b": "Cebula", "c": "Awokado", "correct": "C", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Z czego robi się makaron?", "a": "Ryż", "b": "Pszenica", "c": "Kukurydza", "correct": "B", "difficulty": "easy"},
+        {"q": "Która kuchnia słynie z paelli?", "a": "Włoska", "b": "Hiszpańska", "c": "Portugalska", "correct": "B", "difficulty": "medium"},
+        {"q": "Z czego robi się humus?", "a": "Ciecierzyca", "b": "Fasola", "c": "Soczewica", "correct": "A", "difficulty": "medium"},
+        {"q": "Który ser jest tradycyjnie używany w pizza Margherita?", "a": "Parmezan", "b": "Mozzarella", "c": "Gorgonzola", "correct": "B", "difficulty": "medium"},
+        {"q": "Co to jest roux w kuchni francuskiej?", "a": "Sos", "b": "Ciasto", "c": "Zagęszczacz z mąki i tłuszczu", "correct": "C", "difficulty": "advanced"},
+        {"q": "Która przyprava jest najdroższa na świecie?", "a": "Wanilia", "b": "Szafran", "c": "Kardamon", "correct": "B", "difficulty": "advanced"},
+        {"q": "Co to jest mise en place?", "a": "Francuski deser", "b": "Przygotowanie składników", "c": "Technika gotowania", "correct": "B", "difficulty": "advanced"},
+        {"q": "Która kuchnia słynie z kimchi?", "a": "Japońska", "b": "Chińska", "c": "Koreańska", "correct": "C", "difficulty": "advanced"},
     ],
 
     "Film": [
         {"q": "Kto wyreżyserował 'Ojca chrzestnego'?", "a": "Martin Scorsese", "b": "Francis Ford Coppola", "c": "Steven Spielberg", "correct": "B", "difficulty": "easy"},
-        {"q": "Który film otrzymał najwięcej Oscarów?", "a": "Titanic", "b": "Ben-Hur", "c": "Władca Pierścieni: Powrót króla", "correct": "B", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Który aktor grał Jamesa Bonda najdłużej?", "a": "Sean Connery", "b": "Roger Moore", "c": "Daniel Craig", "correct": "B", "difficulty": "easy"},
+        {"q": "W którym roku powstał pierwszy film o Harrym Potterze?", "a": "1999", "b": "2001", "c": "2003", "correct": "B", "difficulty": "easy"},
+        {"q": "Kto wyreżyserował 'Listę Schindlera'?", "a": "Steven Spielberg", "b": "Martin Scorsese", "c": "Francis Ford Coppola", "correct": "A", "difficulty": "medium"},
+        {"q": "Który film otrzymał najwięcej Oscarów (11)?", "a": "Titanic", "b": "Ben-Hur", "c": "Oba odpowiedzi są poprawne", "correct": "C", "difficulty": "medium"},
+        {"q": "Kto grał główną rolę w 'Pianista'?", "a": "Adrien Brody", "b": "Ralph Fiennes", "c": "Liam Neeson", "correct": "A", "difficulty": "medium"},
+        {"q": "Kto wyreżyserował 'Siedem samurajów'?", "a": "Akira Kurosawa", "b": "Yasujirō Ozu", "c": "Kenji Mizoguchi", "correct": "A", "difficulty": "advanced"},
+        {"q": "Który film otworzył festiwal w Cannes w 1994?", "a": "Pulp Fiction", "b": "Forrest Gump", "c": "Cztery wesela i pogrzeb", "correct": "A", "difficulty": "advanced"},
+        {"q": "Kto skomponował muzykę do 'Gwiezdnych wojen'?", "a": "Hans Zimmer", "b": "John Williams", "c": "Ennio Morricone", "correct": "B", "difficulty": "advanced"},
+        {"q": "Który polski film zdobył Oscara?", "a": "Pianista", "b": "Ida", "c": "Oba odpowiedzi są poprawne", "correct": "C", "difficulty": "advanced"},
     ],
 
     "Nauki ścisłe": [
         {"q": "Jaki jest symbol chemiczny złota?", "a": "Go", "b": "Au", "c": "Gd", "correct": "B", "difficulty": "easy"},
         {"q": "Ile planet jest w Układzie Słonecznym?", "a": "8", "b": "9", "c": "10", "correct": "A", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Jaka jest stolica matematyki?", "a": "0", "b": "1", "c": "Pi", "correct": "B", "difficulty": "easy"},
+        {"q": "Jak nazywa się proces, w którym rośliny produkują tlen?", "a": "Respiracja", "b": "Fotosynteza", "c": "Transpiracja", "correct": "B", "difficulty": "medium"},
+        {"q": "Ile wynosi przybliżona wartość liczby Pi?", "a": "3.14", "b": "3.16", "c": "3.18", "correct": "A", "difficulty": "medium"},
+        {"q": "Który pierwiastek ma symbol Fe?", "a": "Fluor", "b": "Żelazo", "c": "Fosfor", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto sformułował prawa dynamiki?", "a": "Galileusz", "b": "Newton", "c": "Einstein", "correct": "B", "difficulty": "advanced"},
+        {"q": "Jak nazywa się najlżejszy pierwiastek?", "a": "Hel", "b": "Wodór", "c": "Lit", "correct": "B", "difficulty": "advanced"},
+        {"q": "Ile wynosi prędkość światła w próżni?", "a": "299 792 km/s", "b": "300 000 km/s", "c": "299 792 458 m/s", "correct": "C", "difficulty": "advanced"},
+        {"q": "Kto odkrył promieniotwórczość?", "a": "Marie Curie", "b": "Henri Becquerel", "c": "Ernest Rutherford", "correct": "B", "difficulty": "advanced"},
     ],
 
     "Historia Polski": [
         {"q": "W którym roku Polska odzyskała niepodległość?", "a": "1918", "b": "1919", "c": "1920", "correct": "A", "difficulty": "easy"},
         {"q": "Kto był pierwszym królem Polski?", "a": "Bolesław Chrobry", "b": "Mieszko I", "c": "Kazimierz Wielki", "correct": "A", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "W którym roku nastąpił chrzest Polski?", "a": "966", "b": "1000", "c": "1025", "correct": "A", "difficulty": "easy"},
+        {"q": "Kto był ostatnim królem Polski?", "a": "Stanisław August Poniatowski", "b": "Jan III Sobieski", "c": "August III", "correct": "A", "difficulty": "medium"},
+        {"q": "W którym roku odbyła się bitwa pod Grunwaldem?", "a": "1410", "b": "1420", "c": "1430", "correct": "A", "difficulty": "medium"},
+        {"q": "Kto dowodził w bitwie pod Grunwaldem?", "a": "Kazimierz Wielki", "b": "Władysław Jagiełło", "c": "Stefan Batory", "correct": "B", "difficulty": "medium"},
+        {"q": "W którym roku nastąpił pierwszy rozbiór Polski?", "a": "1772", "b": "1793", "c": "1795", "correct": "A", "difficulty": "advanced"},
+        {"q": "Kto był hetmanem koronnym podczas potopu szwedzkiego?", "a": "Stefan Czarniecki", "b": "Stanisław Koniecpolski", "c": "Jan Karol Chodkiewicz", "correct": "A", "difficulty": "advanced"},
+        {"q": "W którym roku uchwalono Konstytucję 3 Maja?", "a": "1789", "b": "1791", "c": "1793", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto dowodził powstaniem styczniowym?", "a": "Romuald Traugutt", "b": "Ludwik Mierosławski", "c": "Marian Langiewicz", "correct": "A", "difficulty": "advanced"},
     ],
 
     "Sport": [
         {"q": "Ile zawodników jest w drużynie piłkarskiej na boisku?", "a": "10", "b": "11", "c": "12", "correct": "B", "difficulty": "easy"},
         {"q": "Gdzie odbyły się pierwsze nowożytne igrzyska olimpijskie?", "a": "Paryż", "b": "Londyn", "c": "Ateny", "correct": "C", "difficulty": "easy"},
-        # ... więcej pytań
+        {"q": "Ile punktów wart jest touchdown w futbolu amerykańskim?", "a": "6", "b": "7", "c": "8", "correct": "A", "difficulty": "easy"},
+        {"q": "Który polski sportowiec zdobył złoto olimpijskie w rzucie młotem?", "a": "Tomasz Majewski", "b": "Anita Włodarczyk", "c": "Robert Korzeniowski", "correct": "B", "difficulty": "medium"},
+        {"q": "Ile setów trzeba wygrać w tenisie na Wielkim Szlemie (mężczyźni)?", "a": "2", "b": "3", "c": "4", "correct": "B", "difficulty": "medium"},
+        {"q": "Który klub piłkarski ma najwięcej Pucharów Europy/Ligi Mistrzów?", "a": "Barcelona", "b": "Real Madryt", "c": "Milan", "correct": "B", "difficulty": "medium"},
+        {"q": "Kto zdobył najwięcej medali olimpijskich w historii?", "a": "Usain Bolt", "b": "Michael Phelps", "c": "Paavo Nurmi", "correct": "B", "difficulty": "advanced"},
+        {"q": "W którym roku Polska wygrała ME w piłce nożnej juniorów?", "a": "Nigdy", "b": "1993", "c": "2001", "correct": "A", "difficulty": "advanced"},
+        {"q": "Ile Grand Slamy wygrał Roger Federer?", "a": "18", "b": "20", "c": "22", "correct": "B", "difficulty": "advanced"},
+        {"q": "Kto jest najlepszym strzelcem w historii piłki nożnej?", "a": "Pelé", "b": "Cristiano Ronaldo", "c": "Lionel Messi", "correct": "B", "difficulty": "advanced"},
     ],
 }
