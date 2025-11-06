@@ -850,29 +850,14 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
         Lista pytań w formacie [{'q': '...', 'a': '...', 'b': '...', 'c': '...', 'correct': 'A/B/C'}]
     """
     import json
-    import sys
-    import io
-    import locale
+    import logging
 
-    # Ustaw locale na UTF-8
-    try:
-        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-    except:
-        try:
-            locale.setlocale(locale.LC_ALL, 'C.UTF-8')
-        except:
-            pass
+    # Wyłącz verbose logging w httpx/anthropic (może powodować problemy I/O)
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger('anthropic').setLevel(logging.WARNING)
 
-    # Wymuś UTF-8 dla całego środowiska Python
+    # Wymuś UTF-8 dla całego środowiska Python (tylko przez zmienne środowiskowe)
     os.environ['PYTHONIOENCODING'] = 'utf-8'
-    os.environ['LANG'] = 'en_US.UTF-8'
-    os.environ['LC_ALL'] = 'en_US.UTF-8'
-
-    # Upewnij się że stdout/stderr używają UTF-8
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    if hasattr(sys.stderr, 'buffer'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
     api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
 
