@@ -1,3 +1,4 @@
+# SAPER QR - Clean AI Quiz Implementation (2025-11-06)
 from gevent import monkey
 monkey.patch_all()
 
