@@ -1,8 +1,8 @@
 # fly.toml app configuration file
 # Wygenerowane dla SAPER QR
 
-app = "saper-qr"
-primary_region = "waw"  # Warsaw - najbliżej Polski!
+app = "saper-fly"
+primary_region = "fra"  # Frankfurt - where volumes are created
 
 [build]
 
