@@ -620,6 +620,98 @@ def reset_event(event_id):
         db.session.rollback()
         return jsonify({'message': f'Błąd serwera: {str(e)}'}), 500
 
+# --- AI QUIZ API ENDPOINTS ---
+@app.route('/api/admin/ai-quiz/load-questions', methods=['POST'])
+@admin_required
+def load_ai_questions():
+    """Załaduj pytania z seed do bazy (tylko dla admina)"""
+    try:
+        from ai_questions_seed import AI_QUESTIONS_SEED
+
+        loaded_count = 0
+        for category_name, questions in AI_QUESTIONS_SEED.items():
+            # Znajdź kategorię
+            category = AIQuizCategory.query.filter_by(name=category_name, is_default=True).first()
+            if not category:
+                continue
+
+            # Sprawdź ile pytań już jest dla tej kategorii
+            existing_count = AIQuestion.query.filter_by(category_id=category.id).count()
+
+            if existing_count > 0:
+                # Pytania już są - pomiń
+                continue
+
+            # Dodaj pytania
+            for q_data in questions:
+                question = AIQuestion(
+                    category_id=category.id,
+                    question_text=q_data['q'],
+                    option_a=q_data['a'],
+                    option_b=q_data['b'],
+                    option_c=q_data['c'],
+                    correct_answer=q_data['correct'],
+                    difficulty=q_data['difficulty']
+                )
+                db.session.add(question)
+                loaded_count += 1
+
+        db.session.commit()
+        return jsonify({
+            'message': f'Załadowano {loaded_count} pytań do bazy',
+            'loaded_count': loaded_count
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/ai-quiz/categories', methods=['GET'])
+@admin_required
+def get_ai_categories_admin():
+    """Pobierz wszystkie kategorie AI Quiz (dla admina)"""
+    categories = AIQuizCategory.query.filter_by(is_default=True).all()
+    return jsonify([{
+        'id': cat.id,
+        'name': cat.name,
+        'question_count': AIQuestion.query.filter_by(category_id=cat.id).count()
+    } for cat in categories])
+
+@app.route('/api/admin/ai-quiz/questions/<int:category_id>', methods=['GET'])
+@admin_required
+def get_ai_questions_admin(category_id):
+    """Pobierz wszystkie pytania dla kategorii (dla admina)"""
+    questions = AIQuestion.query.filter_by(category_id=category_id).order_by(AIQuestion.id).all()
+    return jsonify([{
+        'id': q.id,
+        'question_text': q.question_text,
+        'option_a': q.option_a,
+        'option_b': q.option_b,
+        'option_c': q.option_c,
+        'correct_answer': q.correct_answer,
+        'difficulty': q.difficulty,
+        'times_shown': q.times_shown,
+        'times_correct': q.times_correct
+    } for q in questions])
+
+@app.route('/api/admin/ai-quiz/question/<int:question_id>', methods=['PUT'])
+@admin_required
+def update_ai_question(question_id):
+    """Edytuj pytanie AI (dla admina)"""
+    question = db.session.get(AIQuestion, question_id)
+    if not question:
+        return jsonify({'error': 'Pytanie nie znalezione'}), 404
+
+    data = request.json
+    question.question_text = data.get('question_text', question.question_text)
+    question.option_a = data.get('option_a', question.option_a)
+    question.option_b = data.get('option_b', question.option_b)
+    question.option_c = data.get('option_c', question.option_c)
+    question.correct_answer = data.get('correct_answer', question.correct_answer)
+    question.difficulty = data.get('difficulty', question.difficulty)
+
+    db.session.commit()
+    return jsonify({'message': 'Pytanie zaktualizowane'})
+
 @app.route('/api/admin/qrcodes/generate', methods=['POST'])
 @admin_required
 def admin_generate_qr_codes():
