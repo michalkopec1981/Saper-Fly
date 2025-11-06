@@ -1661,41 +1661,68 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     // Start game button
-    document.getElementById('start-game')?.addEventListener('click', async () => {
-        const minutes = parseInt(document.getElementById('game-duration-input').value);
-        console.log('🎮 Starting game with', minutes, 'minutes');
-        
-        if (isNaN(minutes) || minutes < 1) {
-            alert('Proszę wprowadzić poprawny czas gry (minimum 1 minuta).');
-            return;
-        }
-        
-        if (!confirm(`Czy na pewno chcesz rozpocząć nową grę na ${minutes} minut?`)) {
-            return;
-        }
-        
-        try {
-            console.log('📤 Sending start game request...');
-            const response = await fetch('/api/host/start_game', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ minutes })
-            });
-            
-            const result = await response.json();
-            console.log('📥 Start game response:', result);
-            
-            if (!response.ok) {
-                throw new Error(result.error || 'Nieznany błąd uruchamiania gry');
+    const startGameBtn = document.getElementById('start-game');
+    if (!startGameBtn) {
+        console.error('❌ CRITICAL: start-game button not found!');
+    } else {
+        console.log('✅ start-game button found, attaching event listener');
+        startGameBtn.addEventListener('click', async () => {
+            console.log('🎮 START GAME BUTTON CLICKED');
+
+            const durationInput = document.getElementById('game-duration-input');
+            if (!durationInput) {
+                console.error('❌ game-duration-input not found!');
+                alert('Błąd: Nie znaleziono pola czasu gry');
+                return;
             }
-            
-            console.log('✅ Game started successfully');
-            alert(result.message || 'Gra rozpoczęta!');
-        } catch (error) {
-            console.error('❌ Error starting game:', error);
-            alert('Błąd podczas uruchamiania gry: ' + error.message);
-        }
-    });
+
+            const minutes = parseInt(durationInput.value);
+            console.log('🎮 Starting game with', minutes, 'minutes');
+
+            if (isNaN(minutes) || minutes < 1) {
+                console.warn('⚠️ Invalid minutes:', minutes);
+                alert('Proszę wprowadzić poprawny czas gry (minimum 1 minuta).');
+                return;
+            }
+
+            console.log('📋 Asking for confirmation...');
+            if (!confirm(`Czy na pewno chcesz rozpocząć nową grę na ${minutes} minut?`)) {
+                console.log('❌ User cancelled');
+                return;
+            }
+
+            console.log('✅ User confirmed, starting game...');
+
+            try {
+                console.log('📤 Sending start game request to /api/host/start_game...');
+                const response = await fetch('/api/host/start_game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minutes })
+                });
+
+                console.log('📡 Response status:', response.status, response.statusText);
+
+                const result = await response.json();
+                console.log('📥 Start game response:', result);
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Nieznany błąd uruchamiania gry');
+                }
+
+                console.log('✅ Game started successfully');
+                alert(result.message || 'Gra rozpoczęta!');
+
+                // Odśwież stan gry
+                console.log('🔄 Refreshing game state...');
+                await loadGameState();
+            } catch (error) {
+                console.error('❌ Error starting game:', error);
+                console.error('Stack trace:', error.stack);
+                alert('Błąd podczas uruchamiania gry: ' + error.message);
+            }
+        });
+    }
     
     // Stop game button
     document.getElementById('stop-game')?.addEventListener('click', async () => {
