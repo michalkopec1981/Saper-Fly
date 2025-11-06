@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
+import anthropic
 
 # Inicjalizacja
 app = Flask(__name__)
@@ -835,6 +836,93 @@ def update_category_difficulty(category_id):
         'difficulty': new_difficulty
     })
 
+def generate_questions_with_claude(category_name, difficulty, num_questions=10):
+    """
+    Generuje pytania quizowe przez Claude API
+
+    Args:
+        category_name: Nazwa kategorii (np. "Medycyna", "Motoryzacja")
+        difficulty: Poziom trudności (easy/medium/advanced)
+        num_questions: Liczba pytań do wygenerowania (domyślnie 10)
+
+    Returns:
+        Lista pytań w formacie [{'q': '...', 'a': '...', 'b': '...', 'c': '...', 'correct': 'A/B/C'}]
+    """
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych środowiskowych')
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    difficulty_pl = {
+        'easy': 'łatwy (podstawowy)',
+        'medium': 'średni (wymaga wiedzy ogólnej)',
+        'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
+    }
+
+    prompt = f"""Wygeneruj {num_questions} pytań quizowych na temat: {category_name}
+
+Wymagania:
+- Poziom trudności: {difficulty_pl.get(difficulty, 'średni')}
+- Każde pytanie ma 3 opcje odpowiedzi (A, B, C)
+- Tylko jedna odpowiedź jest poprawna
+- Pytania w języku polskim
+- Różnorodne aspekty kategorii
+- Pytania powinny być konkretne i jednoznaczne
+
+Format odpowiedzi (JSON):
+[
+  {{
+    "q": "Treść pytania?",
+    "a": "Odpowiedź A",
+    "b": "Odpowiedź B",
+    "c": "Odpowiedź C",
+    "correct": "A"
+  }},
+  ...
+]
+
+WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego tekstu)."""
+
+    try:
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        response_text = message.content[0].text.strip()
+
+        # Usuń markdown jeśli API zwróciło z ```json
+        if response_text.startswith('```json'):
+            response_text = response_text[7:]
+        if response_text.startswith('```'):
+            response_text = response_text[3:]
+        if response_text.endswith('```'):
+            response_text = response_text[:-3]
+        response_text = response_text.strip()
+
+        # Parse JSON
+        import json
+        questions = json.loads(response_text)
+
+        # Walidacja
+        if not isinstance(questions, list):
+            raise Exception('Odpowiedź API nie jest listą pytań')
+
+        for q in questions:
+            if not all(key in q for key in ['q', 'a', 'b', 'c', 'correct']):
+                raise Exception('Pytanie ma nieprawidłowy format')
+            if q['correct'] not in ['A', 'B', 'C']:
+                raise Exception('Nieprawidłowa poprawna odpowiedź')
+
+        return questions
+
+    except anthropic.APIError as e:
+        raise Exception(f'Błąd API Claude: {str(e)}')
+    except json.JSONDecodeError as e:
+        raise Exception(f'Błąd parsowania odpowiedzi API: {str(e)}')
+
 @app.route('/api/host/ai-quiz/category', methods=['POST'])
 @host_required
 def add_custom_category():
@@ -877,14 +965,29 @@ def add_custom_category():
     # Jeśli użytkownik wybrał generowanie przez Claude API
     if use_claude_api:
         try:
-            # TODO: Implementacja Claude API - generowanie pytań
-            # Na razie zwróć sukces z informacją o braku pytań
+            # Generuj pytania przez Claude API
+            questions_data = generate_questions_with_claude(category_name, difficulty, num_questions=10)
+
+            # Dodaj pytania do bazy
+            questions_added = 0
+            for q_data in questions_data:
+                question = AIQuestion(
+                    category_id=new_category.id,
+                    question_text=q_data['q'],
+                    option_a=q_data['a'],
+                    option_b=q_data['b'],
+                    option_c=q_data['c'],
+                    correct_answer=q_data['correct'],
+                    difficulty=difficulty
+                )
+                db.session.add(question)
+                questions_added += 1
+
             db.session.commit()
             return jsonify({
-                'message': f'Kategoria "{category_name}" utworzona. Generowanie pytań przez Claude API - w przygotowaniu.',
+                'message': f'Kategoria "{category_name}" utworzona z {questions_added} pytaniami wygenerowanymi przez AI!',
                 'category_id': new_category.id,
-                'questions_generated': 0,
-                'note': 'Funkcja generowania pytań przez Claude API będzie dostępna wkrótce'
+                'questions_generated': questions_added
             })
         except Exception as e:
             db.session.rollback()
