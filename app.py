@@ -133,6 +133,42 @@ class GameState(db.Model):
     value = db.Column(db.String(255), nullable=False)
     __table_args__ = (db.UniqueConstraint('event_id', 'key', name='_event_key_uc'),)
 
+# --- AI Quiz Models ---
+class AIQuizCategory(db.Model):
+    """Kategorie dla AI Quiz - 10 domyślnych + custom od Hosta"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)  # np. "Historia powszechna", "Medycyna"
+    difficulty = db.Column(db.String(20), nullable=False, default='medium')  # easy, medium, advanced
+    is_active = db.Column(db.Boolean, default=True)  # Host może wyłączyć
+    is_default = db.Column(db.Boolean, default=False)  # Czy to jedna z 10 domyślnych
+    is_custom = db.Column(db.Boolean, default=False)  # Czy dodana przez Hosta
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id', ondelete='CASCADE'), nullable=True)  # NULL dla domyślnych
+    created_by_api = db.Column(db.Boolean, default=False)  # Czy pytania generowane przez Claude API
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class AIQuestion(db.Model):
+    """Pytania AI - edytowalne przez Admina"""
+    id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(db.Integer, db.ForeignKey('ai_quiz_category.id', ondelete='CASCADE'), nullable=False)
+    question_text = db.Column(db.String(500), nullable=False)
+    option_a = db.Column(db.String(200), nullable=False)
+    option_b = db.Column(db.String(200), nullable=False)
+    option_c = db.Column(db.String(200), nullable=False)
+    correct_answer = db.Column(db.String(1), nullable=False)  # 'A', 'B', 'C'
+    difficulty = db.Column(db.String(20), nullable=False, default='medium')  # easy, medium, advanced
+    times_shown = db.Column(db.Integer, default=0)
+    times_correct = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class AIPlayerAnswer(db.Model):
+    """Odpowiedzi graczy na pytania AI - żeby pytania się nie powtarzały"""
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id', ondelete='CASCADE'), nullable=False)
+    ai_question_id = db.Column(db.Integer, db.ForeignKey('ai_question.id', ondelete='CASCADE'), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.id', ondelete='CASCADE'), nullable=False)
+    answered_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('player_id', 'ai_question_id', name='_ai_player_question_uc'),)
+
 # Inicjalizacja bazy danych przy starcie aplikacji
 with app.app_context():
     try:
@@ -148,7 +184,34 @@ with app.app_context():
             event.set_password('password1')
             db.session.add(event)
             print("Default event created.")
-        
+
+        # Inicjalizacja 10 domyślnych kategorii AI Quiz
+        if AIQuizCategory.query.filter_by(is_default=True).count() == 0:
+            default_categories = [
+                'Historia powszechna',
+                'Geografia',
+                'Znane postaci',
+                'Muzyka',
+                'Literatura',
+                'Kuchnia',
+                'Film',
+                'Nauki ścisłe',
+                'Historia Polski',
+                'Sport'
+            ]
+            for cat_name in default_categories:
+                category = AIQuizCategory(
+                    name=cat_name,
+                    difficulty='medium',
+                    is_active=True,
+                    is_default=True,
+                    is_custom=False,
+                    event_id=None,
+                    created_by_api=False
+                )
+                db.session.add(category)
+            print("Default AI Quiz categories created.")
+
         db.session.commit()
         print("Database tables checked/created successfully.")
     except Exception as e:
