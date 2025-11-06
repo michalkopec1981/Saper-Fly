@@ -859,19 +859,27 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
     # Wymuś UTF-8 dla całego środowiska Python (tylko przez zmienne środowiskowe)
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
-    api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
 
-    # Sprawdź czy klucz API jest ustawiony i wygląda poprawnie
+    # Debug: sprawdź długość i pierwsze znaki
     if not api_key:
         raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych srodowiskowych')
+
+    # Usuń wszystkie białe znaki (spacje, taby, newlines)
+    api_key = api_key.strip().replace('\n', '').replace('\r', '').replace('\t', '').replace(' ', '')
+
+    # Sprawdź długość
+    if len(api_key) < 20:
+        raise Exception(f'ANTHROPIC_API_KEY jest za krotki (dlugosc: {len(api_key)})')
 
     # Sprawdź czy to nie jest placeholder
     if 'twoj' in api_key.lower() or 'placeholder' in api_key.lower() or api_key == 'your-key-here':
         raise Exception('ANTHROPIC_API_KEY zawiera placeholder - uzyj prawdziwego klucza API z console.anthropic.com')
 
     # Klucz API Anthropic powinien zaczynać się od 'sk-ant-'
+    first_chars = api_key[:10] if len(api_key) >= 10 else api_key
     if not api_key.startswith('sk-ant-'):
-        raise Exception('ANTHROPIC_API_KEY ma nieprawidlowy format (powinien zaczynac sie od sk-ant-)')
+        raise Exception(f'ANTHROPIC_API_KEY ma nieprawidlowy format. Zaczyna sie od: "{first_chars}..." (powinien zaczynac sie od "sk-ant-")')
 
     # Zapisz i usuń zmienne proxy, które mogą powodować problemy z anthropic
     old_http_proxy = os.environ.pop('HTTP_PROXY', None)
