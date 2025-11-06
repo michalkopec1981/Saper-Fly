@@ -852,25 +852,44 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
     import json
     import sys
     import io
+    import locale
+
+    # Ustaw locale na UTF-8
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+    except:
+        try:
+            locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+        except:
+            pass
+
+    # Wymuś UTF-8 dla całego środowiska Python
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    os.environ['LANG'] = 'en_US.UTF-8'
+    os.environ['LC_ALL'] = 'en_US.UTF-8'
 
     # Upewnij się że stdout/stderr używają UTF-8
-    if sys.stdout.encoding != 'utf-8':
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    if sys.stderr.encoding != 'utf-8':
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'buffer'):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
         raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych środowiskowych')
 
-    # Usuń zmienne proxy, które mogą powodować problemy z anthropic
+    # Zapisz i usuń zmienne proxy, które mogą powodować problemy z anthropic
     old_http_proxy = os.environ.pop('HTTP_PROXY', None)
     old_https_proxy = os.environ.pop('HTTPS_PROXY', None)
     old_http_proxy_lower = os.environ.pop('http_proxy', None)
     old_https_proxy_lower = os.environ.pop('https_proxy', None)
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        # Wyłącz verbose logging w anthropic (może powodować problemy z kodowaniem)
+        client = anthropic.Anthropic(
+            api_key=api_key,
+            max_retries=2
+        )
     finally:
         # Przywróć zmienne proxy
         if old_http_proxy:
@@ -888,10 +907,14 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
         'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
     }
 
+    # Upewnij się że wszystkie stringi są w UTF-8
+    category_name = str(category_name).encode('utf-8', errors='replace').decode('utf-8')
+    difficulty_level = difficulty_pl.get(difficulty, 'średni')
+
     prompt = f"""Wygeneruj {num_questions} pytań quizowych na temat: {category_name}
 
 Wymagania:
-- Poziom trudności: {difficulty_pl.get(difficulty, 'średni')}
+- Poziom trudności: {difficulty_level}
 - Każde pytanie ma 3 opcje odpowiedzi (A, B, C)
 - Tylko jedna odpowiedź jest poprawna
 - Pytania w języku polskim
@@ -911,6 +934,9 @@ Format odpowiedzi (JSON):
 ]
 
 WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego tekstu)."""
+
+    # Upewnij się że prompt jest UTF-8
+    prompt = prompt.encode('utf-8', errors='replace').decode('utf-8')
 
     try:
         message = client.messages.create(
@@ -947,15 +973,22 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
 
     except anthropic.APIError as e:
         error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        raise Exception(f'Błąd API Claude: {error_msg}')
+        raise Exception(f'Blad API Claude: {error_msg}')
     except json.JSONDecodeError as e:
         error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        raise Exception(f'Błąd parsowania odpowiedzi API: {error_msg}')
+        raise Exception(f'Blad parsowania odpowiedzi API: {error_msg}')
     except UnicodeEncodeError as e:
-        raise Exception(f'Błąd kodowania znaków: {e.reason}')
+        # Unikaj polskich znaków w komunikacie błędu
+        raise Exception(f'Blad kodowania znakow: {repr(e)}')
+    except UnicodeDecodeError as e:
+        raise Exception(f'Blad dekodowania znakow: {repr(e)}')
     except Exception as e:
-        error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
-        raise Exception(f'Błąd: {error_msg}')
+        # Bezpieczna konwersja błędu - używaj repr zamiast str dla Unicode
+        try:
+            error_msg = str(e).encode('utf-8', errors='replace').decode('utf-8')
+        except:
+            error_msg = repr(e)
+        raise Exception(f'Blad: {error_msg}')
 
 @app.route('/api/host/ai-quiz/category', methods=['POST'])
 @host_required
