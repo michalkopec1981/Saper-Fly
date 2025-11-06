@@ -80,6 +80,7 @@
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#password" data-translate="tab_password">Hasło</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#players" data-translate="tab_players">Gracze</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#questions" data-translate="tab_questions">Pytania</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ai" data-translate="tab_ai">AI</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#minigames" data-translate="tab_minigames">Minigry</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#timing" data-translate="tab_timing">Czas i tempo</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#photo" data-translate="tab_photo">Foto</button></li>
@@ -367,6 +368,77 @@
                 </div>
                 <div class="card-body">
                     <div id="questions-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="ai">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">AI Quiz - Kategorie domyślne</h5>
+                    <small class="text-muted">10 kategorii z gotowymi pytaniami (darmowe)</small>
+                </div>
+                <div class="card-body">
+                    <div id="ai-default-categories" class="row g-3">
+                        <!-- Kategorie domyślne będą tu załadowane przez JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">Własne kategorie</h5>
+                        <small class="text-muted">Kategorie stworzone przez Ciebie (pytania generowane przez Claude API - płatne)</small>
+                    </div>
+                    <button class="btn btn-primary" id="add-custom-category-btn">
+                        <i class="bi bi-plus-circle"></i> Dodaj kategorię
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="ai-custom-categories">
+                        <!-- Custom kategorie będą tu załadowane przez JS -->
+                        <p class="text-muted text-center" id="no-custom-categories">Brak własnych kategorii</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Dodaj custom kategorię -->
+            <div class="modal fade" id="addCustomCategoryModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Dodaj własną kategorię</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="custom-category-name" class="form-label">Nazwa kategorii</label>
+                                <input type="text" class="form-control" id="custom-category-name" placeholder="np. Medycyna, Motoryzacja">
+                            </div>
+                            <div class="mb-3">
+                                <label for="custom-category-difficulty" class="form-label">Poziom trudności</label>
+                                <select class="form-select" id="custom-category-difficulty">
+                                    <option value="easy">Łatwy</option>
+                                    <option value="medium" selected>Średni</option>
+                                    <option value="advanced">Zaawansowany</option>
+                                </select>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="use-claude-api" checked>
+                                <label class="form-check-label" for="use-claude-api">
+                                    Generuj pytania przez Claude API (płatne, wysokiej jakości)
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    Jeśli odznaczone, pytania będą musiały być dodane ręcznie przez Admina.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                            <button type="button" class="btn btn-primary" id="confirm-add-custom-category">Dodaj</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2059,7 +2131,231 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     
     document.querySelector('button[data-bs-target="#password"]')?.addEventListener('click', loadPasswordState);
-    
+
+    // ==================== AI QUIZ ====================
+    let aiCategories = { default_categories: [], custom_categories: [] };
+
+    async function loadAICategories() {
+        try {
+            const response = await fetch('/api/host/ai-quiz/categories');
+            if (!response.ok) throw new Error('Błąd pobierania kategorii');
+            aiCategories = await response.json();
+            renderDefaultCategories();
+            renderCustomCategories();
+        } catch (error) {
+            console.error('Error loading AI categories:', error);
+            showNotification('Błąd ładowania kategorii AI', 'danger');
+        }
+    }
+
+    function renderDefaultCategories() {
+        const container = document.getElementById('ai-default-categories');
+        if (!container) return;
+
+        container.innerHTML = aiCategories.default_categories.map(cat => `
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">${cat.name}</h6>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       id="cat-toggle-${cat.id}"
+                                       ${cat.is_active ? 'checked' : ''}
+                                       onchange="toggleAICategory(${cat.id})">
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <i class="bi bi-question-circle"></i> ${cat.question_count} pytań
+                        </p>
+                        <select class="form-select form-select-sm"
+                                onchange="updateAICategoryDifficulty(${cat.id}, this.value)">
+                            <option value="easy" ${cat.difficulty === 'easy' ? 'selected' : ''}>Łatwy</option>
+                            <option value="medium" ${cat.difficulty === 'medium' ? 'selected' : ''}>Średni</option>
+                            <option value="advanced" ${cat.difficulty === 'advanced' ? 'selected' : ''}>Zaawansowany</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderCustomCategories() {
+        const container = document.getElementById('ai-custom-categories');
+        const noCategories = document.getElementById('no-custom-categories');
+
+        if (!container) return;
+
+        if (aiCategories.custom_categories.length === 0) {
+            noCategories.style.display = 'block';
+            container.querySelectorAll('.card').forEach(card => card.remove());
+            return;
+        }
+
+        noCategories.style.display = 'none';
+        container.innerHTML = aiCategories.custom_categories.map(cat => `
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h6 class="mb-1">${cat.name}</h6>
+                            <small class="text-muted">
+                                <i class="bi bi-question-circle"></i> ${cat.question_count} pytań
+                                ${cat.created_by_api ? '<i class="bi bi-stars text-primary ms-2" title="Wygenerowane przez AI"></i>' : ''}
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm"
+                                    onchange="updateAICategoryDifficulty(${cat.id}, this.value)">
+                                <option value="easy" ${cat.difficulty === 'easy' ? 'selected' : ''}>Łatwy</option>
+                                <option value="medium" ${cat.difficulty === 'medium' ? 'selected' : ''}>Średni</option>
+                                <option value="advanced" ${cat.difficulty === 'advanced' ? 'selected' : ''}>Zaawansowany</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       id="cat-toggle-${cat.id}"
+                                       ${cat.is_active ? 'checked' : ''}
+                                       onchange="toggleAICategory(${cat.id})">
+                                <label class="form-check-label small">Aktywna</label>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteAICategory(${cat.id}, '${cat.name}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function toggleAICategory(categoryId) {
+        try {
+            const response = await fetch(`/api/host/ai-quiz/category/${categoryId}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Błąd');
+            showNotification(data.message, 'success');
+            await loadAICategories();
+        } catch (error) {
+            console.error('Error toggling category:', error);
+            showNotification(error.message, 'danger');
+            await loadAICategories(); // Refresh to restore correct state
+        }
+    }
+
+    async function updateAICategoryDifficulty(categoryId, difficulty) {
+        try {
+            const response = await fetch(`/api/host/ai-quiz/category/${categoryId}/difficulty`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ difficulty })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Błąd');
+            showNotification(data.message, 'success');
+        } catch (error) {
+            console.error('Error updating difficulty:', error);
+            showNotification(error.message, 'danger');
+        }
+    }
+
+    async function deleteAICategory(categoryId, categoryName) {
+        if (!confirm(`Czy na pewno usunąć kategorię "${categoryName}"? Wszystkie pytania w tej kategorii zostaną usunięte.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/host/ai-quiz/category/${categoryId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Błąd');
+            showNotification(data.message, 'success');
+            await loadAICategories();
+        } catch (error) {
+            console.error('Error deleting category:', error);
+            showNotification(error.message, 'danger');
+        }
+    }
+
+    // Modal: Dodaj custom kategorię
+    const addCustomCategoryBtn = document.getElementById('add-custom-category-btn');
+    const addCustomCategoryModal = new bootstrap.Modal(document.getElementById('addCustomCategoryModal'));
+    const confirmAddCustomCategory = document.getElementById('confirm-add-custom-category');
+
+    addCustomCategoryBtn?.addEventListener('click', () => {
+        document.getElementById('custom-category-name').value = '';
+        document.getElementById('custom-category-difficulty').value = 'medium';
+        document.getElementById('use-claude-api').checked = true;
+        addCustomCategoryModal.show();
+    });
+
+    confirmAddCustomCategory?.addEventListener('click', async () => {
+        const name = document.getElementById('custom-category-name').value.trim();
+        const difficulty = document.getElementById('custom-category-difficulty').value;
+        const useClaudeAPI = document.getElementById('use-claude-api').checked;
+
+        if (!name) {
+            showNotification('Podaj nazwę kategorii', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/host/ai-quiz/category', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    difficulty,
+                    use_claude_api: useClaudeAPI
+                })
+            });
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Błąd');
+
+            showNotification(data.message, 'success');
+            if (data.note) {
+                showNotification(data.note, 'info');
+            }
+
+            addCustomCategoryModal.hide();
+            await loadAICategories();
+        } catch (error) {
+            console.error('Error adding category:', error);
+            showNotification(error.message, 'danger');
+        }
+    });
+
+    // Load AI categories when AI tab is clicked
+    document.querySelector('button[data-bs-target="#ai"]')?.addEventListener('click', loadAICategories);
+
+    // Helper function for notifications
+    function showNotification(message, type = 'info') {
+        // Reuse existing notification system if available, or create simple alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 4000);
+    }
+
+    // Make functions globally available for onclick handlers
+    window.toggleAICategory = toggleAICategory;
+    window.updateAICategoryDifficulty = updateAICategoryDifficulty;
+    window.deleteAICategory = deleteAICategory;
+
 });
 </script>
 {% endblock %}
