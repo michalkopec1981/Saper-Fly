@@ -24,8 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Skopiuj całą aplikację
 COPY . .
 
-# Utwórz folder na logi
-RUN mkdir -p static/uploads/logos static/uploads/funny
+# Utwórz foldery na logi i persystentne dane
+RUN mkdir -p static/uploads/logos static/uploads/funny /data
 
 # Expose port (Fly.io używa 8080 wewnętrznie)
 EXPOSE 8080
