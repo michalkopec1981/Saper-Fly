@@ -847,79 +847,56 @@ def update_category_difficulty(category_id):
 def generate_questions_with_claude(category_name, difficulty, num_questions=10):
     """
     Generuje pytania quizowe przez Claude API
-
-    Args:
-        category_name: Nazwa kategorii (np. "Medycyna", "Motoryzacja")
-        difficulty: Poziom trudności (easy/medium/advanced)
-        num_questions: Liczba pytań do wygenerowania (domyślnie 10)
-
-    Returns:
-        Lista pytań w formacie [{'q': '...', 'a': '...', 'b': '...', 'c': '...', 'correct': 'A/B/C'}]
     """
     import json
-
+    
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
         raise Exception('ANTHROPIC_API_KEY nie jest ustawiony w zmiennych środowiskowych')
 
-    # Usuń zmienne proxy, które mogą powodować problemy z anthropic
-    old_http_proxy = os.environ.pop('HTTP_PROXY', None)
-    old_https_proxy = os.environ.pop('HTTPS_PROXY', None)
-    old_http_proxy_lower = os.environ.pop('http_proxy', None)
-    old_https_proxy_lower = os.environ.pop('https_proxy', None)
+    # Usuń zmienne proxy
+    old_proxies = {}
+    for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+        if key in os.environ:
+            old_proxies[key] = os.environ.pop(key)
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
-    finally:
-        # Przywróć zmienne proxy
-        if old_http_proxy:
-            os.environ['HTTP_PROXY'] = old_http_proxy
-        if old_https_proxy:
-            os.environ['HTTPS_PROXY'] = old_https_proxy
-        if old_http_proxy_lower:
-            os.environ['http_proxy'] = old_http_proxy_lower
-        if old_https_proxy_lower:
-            os.environ['https_proxy'] = old_https_proxy_lower
+        
+        difficulty_map = {
+            'easy': 'latwy (podstawowy)',
+            'medium': 'sredni (wymaga wiedzy ogolnej)',
+            'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
+        }
+        
+        difficulty_desc = difficulty_map.get(difficulty, 'sredni')
+        
+        # ✅ KLUCZOWA ZMIANA: Użyj prostych znaków ASCII w promptcie
+        prompt = f"""Generate {num_questions} quiz questions about: {category_name}
 
-    difficulty_pl = {
-        'easy': 'łatwy (podstawowy)',
-        'medium': 'średni (wymaga wiedzy ogólnej)',
-        'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
-    }
+Requirements:
+- Difficulty level: {difficulty_desc}
+- Each question has 3 answer options (A, B, C)
+- Only one answer is correct
+- Questions in POLISH language
+- Various aspects of the category
+- Questions should be specific and unambiguous
 
-    # Upewnij się że wszystkie stringi są w UTF-8
-    category_name = str(category_name).encode('utf-8').decode('utf-8')
-    difficulty_desc = difficulty_pl.get(difficulty, 'średni')
-
-    prompt = """Wygeneruj {num} pytań quizowych na temat: {category}
-
-Wymagania:
-- Poziom trudności: {diff}
-- Każde pytanie ma 3 opcje odpowiedzi (A, B, C)
-- Tylko jedna odpowiedź jest poprawna
-- Pytania w języku polskim
-- Różnorodne aspekty kategorii
-- Pytania powinny być konkretne i jednoznaczne
-
-Format odpowiedzi (JSON):
+Response format (JSON):
 [
   {{
-    "q": "Treść pytania?",
-    "a": "Odpowiedź A",
-    "b": "Odpowiedź B",
-    "c": "Odpowiedź C",
+    "q": "Question text?",
+    "a": "Answer A",
+    "b": "Answer B",
+    "c": "Answer C",
     "correct": "A"
   }},
   ...
 ]
 
-WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego tekstu).""".format(
-        num=num_questions,
-        category=category_name,
-        diff=difficulty_desc
-    )
+IMPORTANT: Return ONLY valid JSON (no markdown, no ```json, no additional text).
+All question and answer texts must be in POLISH language."""
 
-    try:
         message = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=4000,
@@ -928,11 +905,7 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
 
         response_text = message.content[0].text.strip()
 
-        # Upewnij się że tekst jest w UTF-8
-        if isinstance(response_text, bytes):
-            response_text = response_text.decode('utf-8')
-
-        # Usuń markdown jeśli API zwróciło z ```json
+        # Usuń markdown wrapper
         if response_text.startswith('```json'):
             response_text = response_text[7:]
         if response_text.startswith('```'):
@@ -941,26 +914,135 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
             response_text = response_text[:-3]
         response_text = response_text.strip()
 
-        # Parse JSON z explicit UTF-8
-        questions = json.loads(response_text, strict=False)
+        # Parse JSON
+        questions = json.loads(response_text)
 
         # Walidacja
         if not isinstance(questions, list):
-            raise Exception('Odpowiedź API nie jest listą pytań')
+            raise Exception('Odpowiedz API nie jest lista pytan')
 
         for q in questions:
             if not all(key in q for key in ['q', 'a', 'b', 'c', 'correct']):
-                raise Exception('Pytanie ma nieprawidłowy format')
+                raise Exception('Pytanie ma nieprawidlowy format')
             if q['correct'] not in ['A', 'B', 'C']:
-                raise Exception('Nieprawidłowa poprawna odpowiedź')
+                raise Exception('Nieprawidlowa poprawna odpowiedz')
 
         return questions
 
     except anthropic.APIError as e:
-        raise Exception(f'Błąd API Claude: {str(e)}')
+        raise Exception(f'Blad API Claude: {str(e)}')
     except json.JSONDecodeError as e:
-        raise Exception(f'Błąd parsowania odpowiedzi API: {str(e)}')
+        raise Exception(f'Blad parsowania odpowiedzi API: {str(e)}')
+    except Exception as e:
+        raise Exception(f'Nieoczekiwany blad: {str(e)}')
+    finally:
+        # Przywróć zmienne proxy
+        for key, value in old_proxies.items():
+            os.environ[key] = value
 
+
+@app.route('/api/host/ai-quiz/category', methods=['POST'])
+@host_required
+def add_custom_category():
+    """Dodaje custom kategorię dla eventu - z opcją generowania pytań przez Claude API"""
+    event_id = session['host_event_id']
+    
+    try:
+        data = request.json
+        category_name = data.get('name', '').strip()
+        difficulty = data.get('difficulty', 'medium')
+        use_claude_api = data.get('use_claude_api', False)
+
+        if not category_name:
+            return jsonify({'error': 'Nazwa kategorii jest wymagana'}), 400
+
+        if difficulty not in ['easy', 'medium', 'advanced']:
+            return jsonify({'error': 'Nieprawidlowy poziom trudnosci'}), 400
+
+        # Sprawdź czy kategoria już istnieje dla tego eventu
+        existing = AIQuizCategory.query.filter_by(
+            name=category_name,
+            event_id=event_id,
+            is_custom=True
+        ).first()
+
+        if existing:
+            return jsonify({'error': 'Kategoria o tej nazwie juz istnieje'}), 409
+
+        # Utwórz nową kategorię
+        new_category = AIQuizCategory(
+            name=category_name,
+            difficulty=difficulty,
+            is_active=True,
+            is_default=False,
+            is_custom=True,
+            event_id=event_id,
+            created_by_api=use_claude_api
+        )
+        db.session.add(new_category)
+        db.session.flush()
+
+        # Jeśli użytkownik wybrał generowanie przez Claude API
+        if use_claude_api:
+            try:
+                print(f"🤖 Generating AI questions for category: {category_name}")
+                
+                # Generuj pytania przez Claude API
+                questions_data = generate_questions_with_claude(
+                    category_name, 
+                    difficulty, 
+                    num_questions=10
+                )
+
+                print(f"✅ Generated {len(questions_data)} questions")
+
+                # Dodaj pytania do bazy
+                questions_added = 0
+                for q_data in questions_data:
+                    question = AIQuestion(
+                        category_id=new_category.id,
+                        question_text=q_data['q'],
+                        option_a=q_data['a'],
+                        option_b=q_data['b'],
+                        option_c=q_data['c'],
+                        correct_answer=q_data['correct'],
+                        difficulty=difficulty
+                    )
+                    db.session.add(question)
+                    questions_added += 1
+
+                db.session.commit()
+                
+                return jsonify({
+                    'message': f'Kategoria "{category_name}" utworzona z {questions_added} pytaniami wygenerowanymi przez AI!',
+                    'category_id': new_category.id,
+                    'questions_generated': questions_added
+                })
+                
+            except Exception as e:
+                db.session.rollback()
+                error_msg = str(e)
+                print(f"❌ Error generating questions: {error_msg}")
+                
+                # Zwróć bardziej szczegółowy błąd
+                return jsonify({
+                    'error': f'Blad podczas generowania pytan: {error_msg}'
+                }), 500
+        else:
+            # Kategoria bez pytań (Admin może je później dodać)
+            db.session.commit()
+            return jsonify({
+                'message': f'Kategoria "{category_name}" utworzona. Pytania mozna dodac w panelu Admin.',
+                'category_id': new_category.id
+            })
+            
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        print(f"❌ Error in add_custom_category: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Blad serwera: {error_msg}'}), 500
 @app.route('/api/host/ai-quiz/category', methods=['POST'])
 @host_required
 def add_custom_category():
@@ -2523,6 +2605,7 @@ if __name__ == '__main__':
     print("=" * 60)
     
     socketio.run(app, host='0.0.0.0', port=port, debug=debug_mode, allow_unsafe_werkzeug=True)
+
 
 
 
