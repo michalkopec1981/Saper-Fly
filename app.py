@@ -864,12 +864,12 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
         client = anthropic.Anthropic(api_key=api_key)
         
         difficulty_map = {
-            'easy': 'latwy (podstawowy)',
-            'medium': 'sredni (wymaga wiedzy ogolnej)',
+            'easy': 'łatwy (podstawowy)',
+            'medium': 'średni (wymaga wiedzy ogólnej)',
             'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
         }
-        
-        difficulty_desc = difficulty_map.get(difficulty, 'sredni')
+
+        difficulty_desc = difficulty_map.get(difficulty, 'średni')
         
         # ✅ KLUCZOWA ZMIANA: Użyj prostych znaków ASCII w promptcie
         prompt = f"""Generate {num_questions} quiz questions about: {category_name}
@@ -919,22 +919,22 @@ All question and answer texts must be in POLISH language."""
 
         # Walidacja
         if not isinstance(questions, list):
-            raise Exception('Odpowiedz API nie jest lista pytan')
+            raise Exception('Odpowiedź API nie jest listą pytań')
 
         for q in questions:
             if not all(key in q for key in ['q', 'a', 'b', 'c', 'correct']):
-                raise Exception('Pytanie ma nieprawidlowy format')
+                raise Exception('Pytanie ma nieprawidłowy format')
             if q['correct'] not in ['A', 'B', 'C']:
-                raise Exception('Nieprawidlowa poprawna odpowiedz')
+                raise Exception('Nieprawidłowa poprawna odpowiedź')
 
         return questions
 
     except anthropic.APIError as e:
-        raise Exception(f'Blad API Claude: {str(e)}')
+        raise Exception(f'Błąd API Claude: {str(e)}')
     except json.JSONDecodeError as e:
-        raise Exception(f'Blad parsowania odpowiedzi API: {str(e)}')
+        raise Exception(f'Błąd parsowania odpowiedzi API: {str(e)}')
     except Exception as e:
-        raise Exception(f'Nieoczekiwany blad: {str(e)}')
+        raise Exception(f'Nieoczekiwany błąd: {str(e)}')
     finally:
         # Przywróć zmienne proxy
         for key, value in old_proxies.items():
@@ -957,7 +957,7 @@ def add_custom_category():
             return jsonify({'error': 'Nazwa kategorii jest wymagana'}), 400
 
         if difficulty not in ['easy', 'medium', 'advanced']:
-            return jsonify({'error': 'Nieprawidlowy poziom trudnosci'}), 400
+            return jsonify({'error': 'Nieprawidłowy poziom trudności'}), 400
 
         # Sprawdź czy kategoria już istnieje dla tego eventu
         existing = AIQuizCategory.query.filter_by(
@@ -967,7 +967,7 @@ def add_custom_category():
         ).first()
 
         if existing:
-            return jsonify({'error': 'Kategoria o tej nazwie juz istnieje'}), 409
+            return jsonify({'error': 'Kategoria o tej nazwie już istnieje'}), 409
 
         # Utwórz nową kategorię
         new_category = AIQuizCategory(
@@ -1026,13 +1026,13 @@ def add_custom_category():
                 
                 # Zwróć bardziej szczegółowy błąd
                 return jsonify({
-                    'error': f'Blad podczas generowania pytan: {error_msg}'
+                    'error': f'Błąd podczas generowania pytań: {error_msg}'
                 }), 500
         else:
             # Kategoria bez pytań (Admin może je później dodać)
             db.session.commit()
             return jsonify({
-                'message': f'Kategoria "{category_name}" utworzona. Pytania mozna dodac w panelu Admin.',
+                'message': f'Kategoria "{category_name}" utworzona. Pytania można dodać w panelu Admin.',
                 'category_id': new_category.id
             })
             
@@ -1042,83 +1042,7 @@ def add_custom_category():
         print(f"❌ Error in add_custom_category: {error_msg}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Blad serwera: {error_msg}'}), 500
-@app.route('/api/host/ai-quiz/category', methods=['POST'])
-@host_required
-def add_custom_category():
-    """Dodaje custom kategorię dla eventu - z opcją generowania pytań przez Claude API"""
-    event_id = session['host_event_id']
-    data = request.json
-    category_name = data.get('name', '').strip()
-    difficulty = data.get('difficulty', 'medium')
-    use_claude_api = data.get('use_claude_api', False)
-
-    if not category_name:
-        return jsonify({'error': 'Nazwa kategorii jest wymagana'}), 400
-
-    if difficulty not in ['easy', 'medium', 'advanced']:
-        return jsonify({'error': 'Nieprawidłowy poziom trudności'}), 400
-
-    # Sprawdź czy kategoria już istnieje dla tego eventu
-    existing = AIQuizCategory.query.filter_by(
-        name=category_name,
-        event_id=event_id,
-        is_custom=True
-    ).first()
-
-    if existing:
-        return jsonify({'error': 'Kategoria o tej nazwie już istnieje'}), 409
-
-    # Utwórz nową kategorię
-    new_category = AIQuizCategory(
-        name=category_name,
-        difficulty=difficulty,
-        is_active=True,
-        is_default=False,
-        is_custom=True,
-        event_id=event_id,
-        created_by_api=use_claude_api
-    )
-    db.session.add(new_category)
-    db.session.flush()  # Żeby dostać ID kategorii
-
-    # Jeśli użytkownik wybrał generowanie przez Claude API
-    if use_claude_api:
-        try:
-            # Generuj pytania przez Claude API
-            questions_data = generate_questions_with_claude(category_name, difficulty, num_questions=10)
-
-            # Dodaj pytania do bazy
-            questions_added = 0
-            for q_data in questions_data:
-                question = AIQuestion(
-                    category_id=new_category.id,
-                    question_text=q_data['q'],
-                    option_a=q_data['a'],
-                    option_b=q_data['b'],
-                    option_c=q_data['c'],
-                    correct_answer=q_data['correct'],
-                    difficulty=difficulty
-                )
-                db.session.add(question)
-                questions_added += 1
-
-            db.session.commit()
-            return jsonify({
-                'message': f'Kategoria "{category_name}" utworzona z {questions_added} pytaniami wygenerowanymi przez AI!',
-                'category_id': new_category.id,
-                'questions_generated': questions_added
-            })
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': f'Błąd podczas generowania pytań: {str(e)}'}), 500
-    else:
-        # Kategoria bez pytań (Admin może je później dodać)
-        db.session.commit()
-        return jsonify({
-            'message': f'Kategoria "{category_name}" utworzona. Pytania można dodać w panelu Admin.',
-            'category_id': new_category.id
-        })
+        return jsonify({'error': f'Błąd serwera: {error_msg}'}), 500
 
 @app.route('/api/host/ai-quiz/category/<int:category_id>', methods=['DELETE'])
 @host_required
