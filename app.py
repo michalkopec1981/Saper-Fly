@@ -1,8 +1,16 @@
+# -*- coding: utf-8 -*-
 from gevent import monkey
 monkey.patch_all()
 
 import os
+import sys
 import random
+
+# Wymuszenie UTF-8 dla całej aplikacji
+if sys.version_info[0] >= 3:
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 from flask import Flask, render_template, request, jsonify, url_for, session, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
@@ -879,10 +887,14 @@ def generate_questions_with_claude(category_name, difficulty, num_questions=10):
         'advanced': 'zaawansowany (wymaga specjalistycznej wiedzy)'
     }
 
-    prompt = f"""Wygeneruj {num_questions} pytań quizowych na temat: {category_name}
+    # Upewnij się że wszystkie stringi są w UTF-8
+    category_name = str(category_name).encode('utf-8').decode('utf-8')
+    difficulty_desc = difficulty_pl.get(difficulty, 'średni')
+
+    prompt = """Wygeneruj {num} pytań quizowych na temat: {category}
 
 Wymagania:
-- Poziom trudności: {difficulty_pl.get(difficulty, 'średni')}
+- Poziom trudności: {diff}
 - Każde pytanie ma 3 opcje odpowiedzi (A, B, C)
 - Tylko jedna odpowiedź jest poprawna
 - Pytania w języku polskim
@@ -901,7 +913,11 @@ Format odpowiedzi (JSON):
   ...
 ]
 
-WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego tekstu)."""
+WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego tekstu).""".format(
+        num=num_questions,
+        category=category_name,
+        diff=difficulty_desc
+    )
 
     try:
         message = client.messages.create(
@@ -912,6 +928,10 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
 
         response_text = message.content[0].text.strip()
 
+        # Upewnij się że tekst jest w UTF-8
+        if isinstance(response_text, bytes):
+            response_text = response_text.decode('utf-8')
+
         # Usuń markdown jeśli API zwróciło z ```json
         if response_text.startswith('```json'):
             response_text = response_text[7:]
@@ -921,8 +941,8 @@ WAŻNE: Zwróć TYLKO czysty JSON (bez markdown, bez ```json, bez dodatkowego te
             response_text = response_text[:-3]
         response_text = response_text.strip()
 
-        # Parse JSON
-        questions = json.loads(response_text)
+        # Parse JSON z explicit UTF-8
+        questions = json.loads(response_text, strict=False)
 
         # Walidacja
         if not isinstance(questions, list):
