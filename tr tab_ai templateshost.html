@@ -1,0 +1,67 @@
+[1mdiff --git a/fly.toml b/fly.toml[m
+[1mindex b59bf20..a521227 100644[m
+[1m--- a/fly.toml[m
+[1m+++ b/fly.toml[m
+[36m@@ -1,41 +1,37 @@[m
+[31m-# fly.toml app configuration file[m
+[31m-# Wygenerowane dla SAPER QR[m
+[32m+[m[32m# fly.toml app configuration file generated for saper-qr on 2025-11-05T21:36:39+01:00[m
+[32m+[m[32m#[m
+[32m+[m[32m# See https://fly.io/docs/reference/configuration/ for information about how to use this file.[m
+[32m+[m[32m#[m
+ [m
+[31m-app = "saper-qr"[m
+[31m-primary_region = "waw"  # Warsaw - najbliżej Polski![m
+[32m+[m[32mapp = 'saper-qr'[m
+[32m+[m[32mprimary_region = 'fra'[m
+ [m
+ [build][m
+ [m
+ [env][m
+[31m-  PORT = "8080"[m
+[31m-  PYTHONUNBUFFERED = "1"[m
+[32m+[m[32m  PORT = '8080'[m
+[32m+[m[32m  PYTHONUNBUFFERED = '1'[m
+[32m+[m
+[32m+[m[32m[[mounts]][m
+[32m+[m[32m  source = 'saper_uploads'[m
+[32m+[m[32m  destination = '/app/static/uploads'[m
+ [m
+ [http_service][m
+   internal_port = 8080[m
+   force_https = true[m
+[31m-  auto_stop_machines = false  # Dla Socket.IO[m
+[32m+[m[32m  auto_stop_machines = 'off'[m
+   auto_start_machines = true[m
+   min_machines_running = 1[m
+[31m-  processes = ["app"][m
+[32m+[m[32m  processes = ['app'][m
+ [m
+   [[http_service.checks]][m
+[31m-    grace_period = "10s"[m
+[31m-    interval = "30s"[m
+[31m-    method = "GET"[m
+[31m-    timeout = "5s"[m
+[31m-    path = "/health"[m
+[31m-[m
+[31m-[[mounts]][m
+[31m-  source = "saper_uploads"[m
+[31m-  destination = "/app/static/uploads"[m
+[32m+[m[32m    interval = '30s'[m
+[32m+[m[32m    timeout = '5s'[m
+[32m+[m[32m    grace_period = '10s'[m
+[32m+[m[32m    method = 'GET'[m
+[32m+[m[32m    path = '/health'[m
+ [m
+ [[vm]][m
+[31m-  cpu_kind = "shared"[m
+[32m+[m[32m  cpu_kind = 'shared'[m
+   cpus = 1[m
+[31m-  memory_mb = 256  # Free tier - wystarczy na start[m
+[31m-[m
+[31m-# Skalowanie (opcjonalne - odkomentuj jeśli potrzebujesz)[m
+[31m-# [[services.concurrency]][m
+[31m-#   type = "connections"[m
+[31m-#   hard_limit = 1000[m
+[31m-#   soft_limit = 800[m
+[32m+[m[32m  memory_mb = 256[m
