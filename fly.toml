@@ -1,41 +1,22 @@
-# fly.toml app configuration file
-# Wygenerowane dla SAPER QR
+# fly.toml app configuration file generated for saper-fly on 2025-11-05T19:41:24Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "saper-qr"
-primary_region = "waw"  # Warsaw - najbliżej Polski!
+app = 'saper-fly'
+primary_region = 'fra'
 
 [build]
-
-[env]
-  PORT = "8080"
-  PYTHONUNBUFFERED = "1"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false  # Dla Socket.IO
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
-
-  [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
-    method = "GET"
-    timeout = "5s"
-    path = "/health"
-
-[[mounts]]
-  source = "saper_uploads"
-  destination = "/app/static/uploads"
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  cpu_kind = "shared"
+  cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256  # Free tier - wystarczy na start
-
-# Skalowanie (opcjonalne - odkomentuj jeśli potrzebujesz)
-# [[services.concurrency]]
-#   type = "connections"
-#   hard_limit = 1000
-#   soft_limit = 800
+  memory_mb = 1024
